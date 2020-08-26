@@ -27,7 +27,7 @@ var Version = "http://json-schema.org/draft-04/schema#"
 // RFC draft-wright-json-schema-00, section 4.5
 type Schema struct {
 	*Type
-	Definitions Definitions
+	Definitions Definitions `json:"definitions,omitempty"` // section 5.26
 }
 
 // Type represents a JSON Schema object type.
