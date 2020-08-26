@@ -56,13 +56,14 @@ type Type struct {
 	PatternProperties    map[string]*Type       `json:"patternProperties,omitempty"`    // section 5.17
 	AdditionalProperties json.RawMessage        `json:"additionalProperties,omitempty"` // section 5.18
 	Dependencies         map[string]*Type       `json:"dependencies,omitempty"`         // section 5.19
-	Enum                 []interface{}          `json:"enum,omitempty"`                 // section 5.20
-	Type                 string                 `json:"type,omitempty"`                 // section 5.21
-	AllOf                []*Type                `json:"allOf,omitempty"`                // section 5.22
-	AnyOf                []*Type                `json:"anyOf,omitempty"`                // section 5.23
-	OneOf                []*Type                `json:"oneOf,omitempty"`                // section 5.24
-	Not                  *Type                  `json:"not,omitempty"`                  // section 5.25
-	Definitions          Definitions            `json:"definitions,omitempty"`          // section 5.26
+	DependentRequired    map[string][]string    `json:"dependentRequired,omitempty"`
+	Enum                 []interface{}          `json:"enum,omitempty"`        // section 5.20
+	Type                 string                 `json:"type,omitempty"`        // section 5.21
+	AllOf                []*Type                `json:"allOf,omitempty"`       // section 5.22
+	AnyOf                []*Type                `json:"anyOf,omitempty"`       // section 5.23
+	OneOf                []*Type                `json:"oneOf,omitempty"`       // section 5.24
+	Not                  *Type                  `json:"not,omitempty"`         // section 5.25
+	Definitions          Definitions            `json:"definitions,omitempty"` // section 5.26
 	// RFC draft-wright-json-schema-validation-00, section 6, 7
 	Title       string        `json:"title,omitempty"`       // section 6.1
 	Description string        `json:"description,omitempty"` // section 6.1
@@ -338,11 +339,28 @@ func (r *Reflector) reflectStructFields(st *Type, definitions Definitions, t ref
 
 		property := r.reflectTypeToSchema(definitions, f.Type)
 		property.structKeywordsFromTags(f, st, name)
+		property.dependencies(name, st, f)
 
 		st.Properties.Set(name, property)
 		if required {
 			st.Required = append(st.Required, name)
 		}
+	}
+}
+
+func (t *Type) dependencies(name string, parent *Type, f reflect.StructField) {
+	dependencyTag := f.Tag.Get("jsonschema_dependentRequired")
+	if dependencyTag == "" {
+		return
+	}
+	dependencies := strings.Split(dependencyTag, ",")
+
+	if parent.DependentRequired == nil {
+		parent.DependentRequired = map[string][]string{}
+	}
+
+	for _, dep := range dependencies {
+		parent.DependentRequired[name] = append(parent.DependentRequired[name], dep)
 	}
 }
 
